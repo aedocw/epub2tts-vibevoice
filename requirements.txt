@@ -1,0 +1,31 @@
+# Core VibeVoice dependencies
+torch
+accelerate==1.6.0
+transformers==4.51.3
+diffusers
+wheel
+
+# EPUB and text processing
+beautifulsoup4
+ebooklib
+lxml
+nltk
+
+# Audio processing
+mutagen
+pydub
+soundfile
+librosa
+
+# Utilities
+numpy
+pillow
+tqdm
+setuptools==79.0.1
+
+# VibeVoice additional requirements
+llvmlite>=0.40.0
+numba>=0.57.0
+scipy
+ml-collections
+absl-py

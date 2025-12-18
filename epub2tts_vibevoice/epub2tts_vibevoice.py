@@ -215,6 +215,10 @@ def export(book, sourcefile):
                 file.write(f"# {title}\n\n")
                 for paragraph in chapter["paragraphs"]:
                     clean = re.sub(r'[\s\n]+', ' ', paragraph)
+                    # Normalize common curly quotes to straight quotes using simple replacements
+                    clean = clean.replace('“', '"').replace('”', '"')
+                    clean = clean.replace('‘', "'").replace('’', "'")
+                    clean = clean.replace('--', ', ').replace('—', ', ')
                     clean = re.sub(r'[""]', '"', clean)  # Curly double quotes to standard double quotes
                     clean = re.sub(r'[‘’]', "'", clean)  # Curly single quotes to standard single quotes
                     clean = re.sub(r'--', ', ', clean)
@@ -374,14 +378,22 @@ def vibevoice_read_paragraph(paragraph, model, processor, all_prefilled_outputs,
 
     return outputs.speech_outputs[0]
 
-def read_book(book_contents, speaker_name, model_path, notitles):
-    # Automatically detect the best available device
-    if torch.cuda.is_available():
-        device = "cuda"
-    elif torch.backends.mps.is_available():
-        device = "mps"
+def read_book(book_contents, speaker_name, model_path, notitles, forced_device=None):
+    """
+    Read the book contents and generate per-chapter WAV files using VibeVoice.
+
+    If `forced_device` is provided it will be used instead of auto-detection.
+    """
+    # Determine device: prefer forced_device when provided
+    if forced_device:
+        device = forced_device
     else:
-        device = "cpu"
+        if torch.cuda.is_available():
+            device = "cuda"
+        elif torch.backends.mps.is_available():
+            device = "mps"
+        else:
+            device = "cpu"
 
     print(f"Using device: {device}")
 
@@ -740,6 +752,12 @@ def main():
         action="store_true",
         help="Do not read chapter titles"
     )
+    parser.add_argument(
+        "--device",
+        type=str,
+        choices=["cuda", "mps", "cpu"],
+        help="Force device to use (overrides auto-detection).",
+    )
 
     args = parser.parse_args()
     print(args)
@@ -757,7 +775,7 @@ def main():
     # Validate the text file before proceeding
     validate_text_file(args.sourcefile, book_title, book_author, book_contents)
 
-    files = read_book(book_contents, args.speaker, args.model_path, args.notitles)
+    files = read_book(book_contents, args.speaker, args.model_path, args.notitles, forced_device=args.device)
     generate_metadata(files, book_author, book_title, chapter_titles)
     m4bfilename = make_m4b(files, args.sourcefile, args.speaker)
     if args.cover:

@@ -94,13 +94,13 @@ python -m venv .venv && source .venv/bin/activate
 # Install with uv (recommended)
 pip install uv
 uv pip install wheel
-uv pip install flash-attn --no-build-isolation
 uv pip install .
+uv pip install flash-attn --no-build-isolation
 
 # Or install with pip
 # pip install wheel
-# pip install flash-attn --no-build-isolation
 # pip install .
+# pip install flash-attn --no-build-isolation
 ```
 </details>
 
@@ -123,13 +123,15 @@ python3 -m venv .venv && source .venv/bin/activate
 # Install with uv (recommended)
 pip install uv
 uv pip install wheel
-uv pip install flash-attn --no-build-isolation
 uv pip install .
+uv pip install flash-attn --no-build-isolation
+
 
 # Or install with pip
 # pip install wheel
-# pip install flash-attn --no-build-isolation
 # pip install .
+# pip install flash-attn --no-build-isolation
+
 ```
 
 </details>

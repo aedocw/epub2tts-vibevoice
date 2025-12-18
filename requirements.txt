@@ -1,7 +1,7 @@
 # Core VibeVoice dependencies
 # Install from GitHub to get voice files (PyPI package doesn't include them)
 vibevoice @ git+https://github.com/microsoft/VibeVoice.git
-torch
+torch==2.7.0
 accelerate==1.6.0
 transformers==4.51.3
 diffusers

@@ -530,10 +530,11 @@ def read_book(book_contents, speaker_name, model_path, notitles, minratio=88):
                             break
 
                         ratio, transcript = verify_audio(paragraph, ptemp)
+                        print(f"  Whisper match ratio: {ratio} (min={minratio})")
                         if ratio >= minratio:
                             break
                         retries -= 1
-                        print(f"Audio quality check failed (ratio={ratio}, min={minratio})")
+                        print(f"Audio quality check failed")
                         print(f"  Expected: {paragraph[:80]}...")
                         print(f"  Got:      {transcript[:80]}...")
                         if retries > 0:

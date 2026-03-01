@@ -8,6 +8,8 @@ import subprocess
 import torch
 import warnings
 from tqdm import tqdm
+import whisper
+from thefuzz import fuzz
 
 from bs4 import BeautifulSoup
 import ebooklib
@@ -374,7 +376,20 @@ def vibevoice_read_paragraph(paragraph, model, processor, all_prefilled_outputs,
 
     return outputs.speech_outputs[0]
 
-def read_book(book_contents, speaker_name, model_path, notitles):
+_whisper_model = None
+
+def verify_audio(text, wavfile):
+    """Transcribe wavfile with Whisper and return fuzz ratio vs text."""
+    global _whisper_model
+    if _whisper_model is None:
+        print("Loading Whisper tiny model for audio verification...")
+        _whisper_model = whisper.load_model("tiny")
+    result = _whisper_model.transcribe(wavfile)
+    normalized = re.sub(r" +", " ", text).lower().strip()
+    ratio = fuzz.ratio(normalized, result["text"].lower().strip())
+    return ratio, result["text"]
+
+def read_book(book_contents, speaker_name, model_path, notitles, minratio=88):
     # Automatically detect the best available device
     if torch.cuda.is_available():
         device = "cuda"
@@ -499,17 +514,33 @@ def read_book(book_contents, speaker_name, model_path, notitles):
                 else:
                     # Generate audio for entire paragraph with VibeVoice
                     print(f"Generating audio for paragraph {pindex+1}/{len(combined_paragraphs)}")
-                    audio_tensor = vibevoice_read_paragraph(
-                        paragraph,
-                        model,
-                        processor,
-                        all_prefilled_outputs,
-                        device,
-                        cfg_scale=1.5
-                    )
+                    retries = 3
+                    while retries > 0:
+                        audio_tensor = vibevoice_read_paragraph(
+                            paragraph,
+                            model,
+                            processor,
+                            all_prefilled_outputs,
+                            device,
+                            cfg_scale=1.5
+                        )
+                        processor.save_audio(audio_tensor, output_path=ptemp)
 
-                    # Save audio using processor
-                    processor.save_audio(audio_tensor, output_path=ptemp)
+                        if minratio == 0:
+                            break
+
+                        ratio, transcript = verify_audio(paragraph, ptemp)
+                        if ratio >= minratio:
+                            break
+                        retries -= 1
+                        print(f"Audio quality check failed (ratio={ratio}, min={minratio})")
+                        print(f"  Expected: {paragraph[:80]}...")
+                        print(f"  Got:      {transcript[:80]}...")
+                        if retries > 0:
+                            print(f"  Retrying... ({retries} left)")
+                            os.remove(ptemp)
+                        else:
+                            print(f"  Keeping best attempt after retries exhausted.")
 
                     # Add silence at end of paragraph
                     if pindex < len(combined_paragraphs) - 1:
@@ -740,6 +771,12 @@ def main():
         action="store_true",
         help="Do not read chapter titles"
     )
+    parser.add_argument(
+        "--minratio",
+        type=int,
+        default=88,
+        help="Minimum Whisper transcript match ratio (0-100); set to 0 to disable verification (default: 88)",
+    )
 
     args = parser.parse_args()
     print(args)
@@ -757,7 +794,7 @@ def main():
     # Validate the text file before proceeding
     validate_text_file(args.sourcefile, book_title, book_author, book_contents)
 
-    files = read_book(book_contents, args.speaker, args.model_path, args.notitles)
+    files = read_book(book_contents, args.speaker, args.model_path, args.notitles, args.minratio)
     generate_metadata(files, book_author, book_title, chapter_titles)
     m4bfilename = make_m4b(files, args.sourcefile, args.speaker)
     if args.cover:

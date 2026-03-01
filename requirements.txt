@@ -24,6 +24,8 @@ numpy
 pillow
 tqdm
 setuptools==79.0.1
+openai-whisper
+thefuzz
 
 # VibeVoice additional requirements
 llvmlite>=0.40.0
